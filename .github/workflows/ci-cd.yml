@@ -63,6 +63,12 @@ jobs:
           php artisan migrate --force
           php artisan aimeos:setup
 
+      - name: Clear caches before tests
+        run: |
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan view:clear
+
       - name: Run PHP tests (SQLite in-memory)
         run: php artisan test --no-ansi
 
