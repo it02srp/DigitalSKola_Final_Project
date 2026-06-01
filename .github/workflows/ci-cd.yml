@@ -70,7 +70,7 @@ jobs:
           php artisan view:clear
 
       - name: Run PHP tests (SQLite in-memory)
-        run: php artisan test --no-ansi
+        run: php artisan test --no-ansi || (echo "=== LARAVEL LOG ===" && cat storage/logs/laravel.log && exit 1)
 
       - name: Run Laravel Pint (code style check)
         run: ./vendor/bin/pint --test
