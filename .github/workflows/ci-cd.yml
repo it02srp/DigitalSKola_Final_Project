@@ -17,20 +17,6 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: aimeos_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,7 +25,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, sqlite3, zip, gd, intl, bcmath, openssl, tokenizer, ctype, fileinfo, dom, xml
+          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, sqlite3, zip, gd, intl, bcmath, openssl, tokenizer, ctype, fileinfo, dom, xml, json
           coverage: none
 
       - name: Copy .env
@@ -54,25 +40,15 @@ jobs:
       - name: Set directory permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Run database migrations (Aimeos setup)
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: aimeos_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+      - name: PHP Environment check
         run: |
-          php artisan migrate --force
-          php artisan aimeos:setup
+          echo "## PHP Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- PHP: $(php --version | head -1)" >> $GITHUB_STEP_SUMMARY
+          echo "- SQLite: $(php -r 'echo class_exists(PDO::class) ? "PDO OK" : "No PDO";')" >> $GITHUB_STEP_SUMMARY
+          echo "- Extensions: $(php -m | tr '\n' ' ')" >> $GITHUB_STEP_SUMMARY
+          php artisan --version
 
-      - name: Clear all caches before tests
-        run: |
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan view:clear
-
-      - name: Run PHP tests
+      - name: Run PHP tests (SQLite in-memory)
         run: |
           php artisan test 2>&1 | tee /tmp/test.log
           EXIT_CODE=${PIPESTATUS[0]}
@@ -80,28 +56,39 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat /tmp/test.log >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f storage/logs/laravel.log ]; then
+            echo "## Laravel Error Log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -60 storage/logs/laravel.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
           exit $EXIT_CODE
-
-      - name: Show debug info on failure
-        if: failure()
-        run: |
-          echo "## Debug Info" >> $GITHUB_STEP_SUMMARY
-          echo "### Laravel Log (tail 80)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat storage/logs/laravel.log 2>/dev/null | tail -80 >> $GITHUB_STEP_SUMMARY || echo "No laravel.log" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run Laravel Pint (code style check)
         run: ./vendor/bin/pint --test
 
   # ─────────────────────────────────────────
-  # JOB 2: Deploy (hanya saat push ke main)
+  # JOB 2: Build & Deploy (hanya saat push ke main)
   # ─────────────────────────────────────────
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: aimeos_shop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
     steps:
       - name: Checkout code
@@ -138,6 +125,7 @@ jobs:
             git pull origin main
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
+            php artisan aimeos:setup
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
