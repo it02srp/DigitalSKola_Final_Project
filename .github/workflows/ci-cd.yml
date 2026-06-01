@@ -70,15 +70,16 @@ jobs:
           php artisan view:clear
 
       - name: Run PHP tests (SQLite in-memory)
-        run: vendor/bin/phpunit --no-ansi 2>&1 | tee /tmp/phpunit.log; exit ${PIPESTATUS[0]}
+        run: php artisan test
 
-      - name: Show test output (always)
-        if: always()
+      - name: Show Laravel log on failure
+        if: failure()
         run: |
-          echo "=== PHPUnit Output ==="
-          cat /tmp/phpunit.log || echo "No output captured"
-          echo "=== Laravel Log ==="
-          cat storage/logs/laravel.log 2>/dev/null | tail -50 || echo "No laravel.log"
+          echo "=== LARAVEL LOG (last 100 lines) ==="
+          cat storage/logs/laravel.log 2>/dev/null | tail -100 || echo "No laravel.log found"
+          echo "=== PHP INFO ==="
+          php -r "echo PHP_VERSION . PHP_EOL;"
+          php -m | sort
 
       - name: Run Laravel Pint (code style check)
         run: ./vendor/bin/pint --test
