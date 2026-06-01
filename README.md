@@ -4,6 +4,10 @@
 
 [![CI/CD Pipeline](https://github.com/it02srp/DigitalSKola_Final_Project/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/it02srp/DigitalSKola_Final_Project/actions/workflows/ci-cd.yml)
 
+**Live:** https://digitalskolafinalproject-production.up.railway.app
+**CI/CD:** https://github.com/it02srp/DigitalSKola_Final_Project/actions
+**Repo:** https://github.com/it02srp/DigitalSKola_Final_Project
+
 ---
 
 ## Deskripsi Proyek
@@ -164,6 +168,44 @@ shop/
 | `QUEUE_CONNECTION` | Queue driver | `sync` |
 | `CACHE_STORE` | Cache driver | `array` |
 | `MAIL_MAILER` | Mail driver | `array` |
+
+---
+
+## Akses Aplikasi
+
+| | URL |
+|---|---|
+| Shop | https://digitalskolafinalproject-production.up.railway.app |
+| Login | https://digitalskolafinalproject-production.up.railway.app/login |
+| Register | https://digitalskolafinalproject-production.up.railway.app/register |
+| Admin Panel | https://digitalskolafinalproject-production.up.railway.app/admin |
+
+### Cara buat akun admin
+
+1. Register user biasa di `/register`
+2. Jalankan perintah berikut di Railway (service → Run Command):
+```bash
+php artisan aimeos:account --admin emailkamu@example.com
+```
+
+---
+
+## Deployment (Railway)
+
+Aplikasi di-deploy ke **Railway.app** menggunakan Nixpacks builder.
+
+| Komponen | Detail |
+|---|---|
+| Platform | Railway.app |
+| Builder | Nixpacks (PHP 8.2 + Node 20) |
+| Database | MySQL 8.0 (Railway managed) |
+| HTTPS | Otomatis (Railway proxy) |
+| Region | SFO (San Francisco) |
+
+Startup sequence saat deploy:
+```
+config:cache → route:cache → view:cache → migrate --force → aimeos:setup → serve
+```
 
 ---
 
