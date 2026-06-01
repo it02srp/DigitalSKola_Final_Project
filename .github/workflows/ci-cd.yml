@@ -51,7 +51,7 @@ jobs:
       - name: Set directory permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Run database migrations
+      - name: Run database migrations (Aimeos setup)
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
@@ -63,42 +63,10 @@ jobs:
           php artisan migrate --force
           php artisan aimeos:setup
 
-      - name: Debug before tests
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: aimeos_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-        run: |
-          echo "=== PHP version ==="
-          php --version
-          echo "=== PHP extensions ==="
-          php -m
-          echo "=== DB connection test ==="
-          php artisan db:show
-          echo "=== Migration status ==="
-          php artisan migrate:status --no-ansi 2>&1 | head -20
+      - name: Run PHP tests (SQLite in-memory)
+        run: php artisan test --no-ansi
 
-      - name: Run PHP tests
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: aimeos_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-        run: php artisan test --stop-on-failure --no-ansi -v 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
-
-      - name: Upload test output on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: test-output.txt
-
-      - name: Run Laravel Pint (code style)
+      - name: Run Laravel Pint (code style check)
         run: ./vendor/bin/pint --test
 
   # ─────────────────────────────────────────
@@ -123,7 +91,7 @@ jobs:
       - name: Install Composer dependencies (production)
         run: composer install --no-dev --no-progress --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Install Node & build assets
+      - name: Setup Node & build assets
         uses: actions/setup-node@v4
         with:
           node-version: "20"
