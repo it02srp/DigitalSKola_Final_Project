@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ─────────────────────────────────────────
   # JOB 1: Test
@@ -36,7 +39,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, sqlite3, zip, gd, intl, bcmath
+          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, sqlite3, zip, gd, intl, bcmath, openssl, tokenizer, ctype, fileinfo, dom, xml
           coverage: none
 
       - name: Copy .env
@@ -63,23 +66,30 @@ jobs:
           php artisan migrate --force
           php artisan aimeos:setup
 
-      - name: Clear caches before tests
+      - name: Clear all caches before tests
         run: |
           php artisan config:clear
           php artisan cache:clear
           php artisan view:clear
 
-      - name: Run PHP tests (SQLite in-memory)
-        run: php artisan test
+      - name: Run PHP tests
+        run: |
+          php artisan test 2>&1 | tee /tmp/test.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/test.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          exit $EXIT_CODE
 
-      - name: Show Laravel log on failure
+      - name: Show debug info on failure
         if: failure()
         run: |
-          echo "=== LARAVEL LOG (last 100 lines) ==="
-          cat storage/logs/laravel.log 2>/dev/null | tail -100 || echo "No laravel.log found"
-          echo "=== PHP INFO ==="
-          php -r "echo PHP_VERSION . PHP_EOL;"
-          php -m | sort
+          echo "## Debug Info" >> $GITHUB_STEP_SUMMARY
+          echo "### Laravel Log (tail 80)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat storage/logs/laravel.log 2>/dev/null | tail -80 >> $GITHUB_STEP_SUMMARY || echo "No laravel.log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run Laravel Pint (code style check)
         run: ./vendor/bin/pint --test
