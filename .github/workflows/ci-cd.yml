@@ -63,6 +63,24 @@ jobs:
           php artisan migrate --force
           php artisan aimeos:setup
 
+      - name: Debug before tests
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: aimeos_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: |
+          echo "=== PHP version ==="
+          php --version
+          echo "=== PHP extensions ==="
+          php -m
+          echo "=== DB connection test ==="
+          php artisan db:show
+          echo "=== Migration status ==="
+          php artisan migrate:status --no-ansi 2>&1 | head -20
+
       - name: Run PHP tests
         env:
           DB_CONNECTION: mysql
@@ -71,7 +89,7 @@ jobs:
           DB_DATABASE: aimeos_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test --stop-on-failure 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
+        run: php artisan test --stop-on-failure --no-ansi -v 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
 
       - name: Upload test output on failure
         if: failure()
